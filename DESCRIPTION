@@ -1,0 +1,17 @@
+Package: ldavem
+Type: Package
+Title: LDA Variational EM Algorithm
+Version: 0.1
+Date: 2016-04-29
+Author: Clint P. George
+Maintainer: Clint P. George <clintpg@ufl.edu>
+Description: Implements the variational EM algorithm for the latent Dirichlet allocation (LDA) model 
+License: GPL Version 3  
+Depends:
+    Rcpp (>= 0.10.6),
+    RcppArmadillo (>= 0.4.000.2),
+    lattice (>= 0.20-29)
+LinkingTo: 
+    Rcpp, 
+    RcppArmadillo
+RoxygenNote: 5.0.1
