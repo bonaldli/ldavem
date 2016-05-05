@@ -1,9 +1,10 @@
 #' #############################################################################
-#' Runs the LDA Variational Inference Algorithm on Real Dataset 
+#' Runs the LDA Variational Inference Algorithm on Wikipedia Datasets  
 #' 
 #' See help(wt16)  
 #'
 #' Versions: 
+#'    May 05, 2016   - Tested on various Wikipedia datasets   
 #'    April 27, 2015 - Initial version 
 #'    
 #' Example: 
@@ -13,20 +14,20 @@
 rm(list = ls());
 library(ldavem)
 
-data(wt16)
+data(bop) # change to appropriate dataset 
 
-base.alpha     <- .2
-base.eta       <- .8
+base.alpha     <- .1
+base.eta       <- .1
 
-vi.max.iter    <- 20 # the maximum number of Gibbs iterations
-em.max.iter    <- 100
+vi.max.iter    <- 1 # the maximum number of Gibbs iterations
+em.max.iter    <- 1
 vi.conv.thresh <- 1e-6 
 em.conv.thresh <- 1e-4 
-estimate.alpha <- 1
+estimate.alpha <- 0
 estimate.eta   <- 0
 verbose        <- 2 
 SEED           <- 1983 
-K              <- 2 
+K              <- length(class.labels)  
 V              <- length(vocab)  
 
 fn.prefix      <- paste(
@@ -52,4 +53,16 @@ model <-
 # cat("\nThe R Session is saved to:", rdata.file, "\n")
 # 
 
+
+# C-6: cats 
+# opt-alpha: 0.2096168387 opt-eta: 1.146523621
+# 
+# C-7: felines 
+# em_iter #54 vi-lb: -77080.55634 opt-alpha: 0.0562323916 opt-eta: 0.7102011106
+# 
+# C-8: Canis 
+# em_iter #34 vi-lb: -54153.80766 opt-alpha: 0.1625960584 opt-eta: 0.8411708841
+# 
+# C-9: Birds of Prey 
+# 
 

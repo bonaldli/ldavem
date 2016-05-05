@@ -51,6 +51,11 @@ List lda_vem(
     int verbose
 ) {
   
+  cout << endl << endl;
+  if (verbose > 0){
+    cout << "lda-vem (c++): Initializes variables and count statistics....";
+  }
+  
   unsigned int num_docs = docs_tf.size(); // number of documents
   unsigned int d, em_iter, vi_iter, c, word_id, word_count, k;
   unsigned int num_words = 0; // number of words in the corpus
@@ -75,13 +80,11 @@ List lda_vem(
   vec vi_gamma_new; 
   uvec doc_word_counts = zeros<uvec>(num_docs); // doc lengths
   mat vi_mu = zeros<mat>(num_topics, vocab_size); // K x V matrix
+  mat vi_mu_dig = zeros<mat>(num_topics, vocab_size); // K x V matrix
   mat vi_gamma = zeros<mat>(num_topics, num_docs); // K x D matrix
 
   
-  cout << endl << endl;
-  if (verbose > 0){
-    cout << "lda-vem (c++): Initializes variables and count statistics....";
-  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   // Reads corpus statistics  
@@ -129,7 +132,7 @@ List lda_vem(
   // given in the LDA-C package  
   vi_mu.randu(); 
   vi_mu += (1.0 / (double) vocab_size); 
-  vi_mu.each_col() /= sum(vi_mu, 1); // normalizes each row to sum to 1 
+  // vi_mu.each_col() /= sum(vi_mu, 1); // normalizes each row to sum to 1 
   
   em_iter = 0;
   em_conv_ratio = 1.0; 
@@ -162,6 +165,10 @@ List lda_vem(
     mat vi_mu_new = zeros<mat>(num_topics, vocab_size); // K x V matrix
     vi_mu_new.fill(eta_h); 
     
+    for (k = 0; k < num_topics; k++) { // for each topic
+      vi_mu_dig.row(k) = digamma_rowvec(vi_mu.row(k)) - Rf_digamma(sum(vi_mu.row(k)));
+    }
+    assert(vi_mu_dig.is_finite());
     
     em_lb_current = 0.0; // corpus variational lowerbound 
     alpha_ss = 0; // alpha sufficient statistics 
@@ -193,13 +200,13 @@ List lda_vem(
         // vi updates 
         
         vi_gamma_new = ones<vec>(num_topics) * alpha_h; 
-        vi_gamma_ss = exp(digamma_vec(vi_gamma.col(d)) - Rf_digamma(sum(vi_gamma.col(d)))); 
+        vi_gamma_ss = (digamma_vec(vi_gamma.col(d)) - Rf_digamma(sum(vi_gamma.col(d)))); 
         
         for (c = 0; c < num_uwords; c++){ // for each unique word 
           word_id = uword_ids[c];
           word_count = uword_counts[c]; 
           
-          phi_ui = vi_mu.col(word_id) % vi_gamma_ss;   
+          phi_ui = exp(vi_mu_dig.col(word_id) + vi_gamma_ss);   
           phi_ui /= sum(phi_ui); // normalize to sum to 1. 
           phi_d.col(c) = phi_ui; 
           
@@ -220,7 +227,8 @@ List lda_vem(
           word_count = uword_counts[c];
           phi_ui = phi_d.col(c); 
           doc_vi_lb += (sum(phi_ui % dig_digsum) * word_count); // 15.b 
-          doc_vi_lb += (sum(phi_ui % log(vi_mu.col(word_id))) * word_count); // 15.c
+          // doc_vi_lb += (sum(phi_ui % log(vi_mu.col(word_id))) * word_count); // 15.c
+          doc_vi_lb += (sum(phi_ui % vi_mu_dig.col(word_id)) * word_count); // 15.c (modified for the fully Bayes model) 
           doc_vi_lb += (sum(phi_ui % log(phi_ui)) * word_count); // 15.e
         }
         
@@ -260,7 +268,7 @@ List lda_vem(
     // updates variational Dirichlet parameter \mu, for topics (i.e. \beta_k's) 
     
     vi_mu = vi_mu_new; 
-    vi_mu.each_col() /= sum(vi_mu, 1); // normalizes each row to sum to 1 
+    // vi_mu.each_col() /= sum(vi_mu, 1); // normalizes each row to sum to 1 
     
     // computes \eta sufficient statistics 
     
@@ -272,12 +280,14 @@ List lda_vem(
     // hyperparameter optimization for \alpha and \eta   
         
     if(estimate_alpha){
-      alpha_h = opt_hp(100, alpha_ss, num_docs, num_topics);
+      // alpha_h = opt_hp(100, alpha_ss, num_docs, num_topics); // resets \alpha each iteration  
+      alpha_h = opt_hp(alpha_h, alpha_ss, num_docs, num_topics); // initializes with the prior \alpha  
       if (verbose > 1){ cout << endl; }
     }
   
     if(estimate_eta){
-      eta_h = opt_hp(100, eta_ss, num_topics, vocab_size);
+      // eta_h = opt_hp(100, eta_ss, num_topics, vocab_size); // resets \eta each iteration  
+      eta_h = opt_hp(eta_h, eta_ss, num_topics, vocab_size); // initializes with the prior \eta
       if (verbose > 1){ cout << endl; }
     }
     
